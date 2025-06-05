@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chart Js Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-4Q6Gf2aSP4eDXB8Miphtr37CMZZQ5oXLH2yaXMJ2w8e2ZtHTl7GptT4jmndRuHDT" crossorigin="anonymous">
+</head>
+
+<body>
+
+  <nav class="navbar bg-light px-4 py-2 d-flex justify-content-between">
+    <span class="navbar-brand mb-0 h1">Home</span>
+    <button class="btn btn-outline-danger" onclick="handleLogout()">Logout</button>
+  </nav>
+
+  <div class="container p-4">
+    <h1 class="text-center mb-4">📊 Chart Js Dashboard</h1>
+
+    <!-- Filters -->
+    <div class="row mb-4 justify-content-center">
+      <div class="col-auto">
+        <label for="cityCount" class="form-label fw-bold">Number of Cities:</label>
+        <select id="cityCount" class="form-select">
+          <option value="3">Top 3 Cities</option>
+          <option value="5" selected>Top 5 Cities</option>
+          <option value="10">Top 10 Cities</option>
+          <option value="15">Top 15 Cities</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <label for="chartType" class="form-label fw-bold">Chart Type:</label>
+        <select id="chartType" class="form-select">
+          <option value="bar" selected>Bar Chart</option>
+          <option value="line">Line Chart</option>
+          <option value="pie">Pie Chart</option>
+          <option value="doughnut">Doughnut</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Single Chart Canvas -->
+    <div class="card mb-4">
+      <div class="card-body">
+        <h5 id="chartTitle" class="text-center">Bar Chart</h5>
+        <hr>
+        <canvas id="myChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js"
+    crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+  <script>
+    let chart; // Only one chart instance
+    let parsedData = [];
+
+    // Load CSV data
+    Papa.parse("AB_US_2020.csv", {
+      download: true,
+      header: true,
+      complete: function (results) {
+        parsedData = results.data;
+        drawChart(parseInt(document.getElementById("cityCount").value), document.getElementById("chartType").value);
+      }
+    });
+
+    // Event listeners for dropdowns
+    document.getElementById("cityCount").addEventListener("change", () => {
+      updateChart();
+    });
+
+    document.getElementById("chartType").addEventListener("change", () => {
+      updateChart();
+    });
+
+    function updateChart() {
+      const topN = parseInt(document.getElementById("cityCount").value);
+      const type = document.getElementById("chartType").value;
+      drawChart(topN, type);
+    }
+
+    // Draw chart based on type and top N cities
+    function drawChart(topN, chartType) {
+      const cityPriceMap = {};
+
+      parsedData.forEach(row => {
+        const city = row.city;
+        const price = parseFloat(row.price);
+        if (!isNaN(price)) {
+          if (!cityPriceMap[city]) {
+            cityPriceMap[city] = { total: 0, count: 0 };
+          }
+          cityPriceMap[city].total += price;
+          cityPriceMap[city].count += 1;
+        }
+      });
+
+      const topCities = Object.entries(cityPriceMap)
+        .map(([city, stats]) => [city, stats.total / stats.count])
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, topN);
+
+      const labels = topCities.map(([city]) => city);
+      const values = topCities.map(([, avgPrice]) => avgPrice.toFixed(2));
+
+      const chartData = {
+        labels: labels,
+        datasets: [{
+          label: `Average Price of Top ${topN} Cities`,
+          backgroundColor: [
+            '#e74c3c', '#3498db', '#f1c40f', '#2ecc71', '#9b59b6',
+            '#3448db', '#e67e22', '#1abc9c', '#2c3e50', '#7f8c8d',
+            '#8e44ad', '#16a085', '#c0392b', '#2980b9', '#d35400'
+          ],
+          data: values,
+          borderColor: '#2c3e50',
+          borderWidth: 1
+        }]
+      };
+
+      // Destroy previous chart if it exists
+      if (chart) chart.destroy();
+
+      // Create new chart
+      chart = new Chart(document.getElementById('myChart'), {
+        type: chartType,
+        data: chartData,
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              display: chartType !== 'pie' // Hide legend for bar/line
+            }
+          },
+          scales: chartType === 'pie' ? {} : {
+            y: {
+              beginAtZero: true
+            }
+          }
+        }
+      });
+
+      // Update chart title
+      document.getElementById('chartTitle').textContent =
+        chartType.charAt(0).toUpperCase() + chartType.slice(1) + ' Chart';
+    }
+
+    function handleLogout() {
+      window.location.href = "login.html";
+    }
+  </script>
+</body>
+
+</html>
